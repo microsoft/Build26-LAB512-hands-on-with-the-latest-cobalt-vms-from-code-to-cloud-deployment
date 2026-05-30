@@ -1,0 +1,87 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>eShop.Inference</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+  </ItemGroup>
+
+  <!-- Pre-built native library for linux-arm64 (not in NuGet package) -->
+  <ItemGroup>
+    <None Include="native/linux-arm64/libonnxruntime-genai.so"
+          CopyToOutputDirectory="Never"
+          CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <!-- Auto-download ONNX models for local development -->
+  <PropertyGroup>
+    <ModelsDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../models'))</ModelsDir>
+    <HuggingFaceBase>https://huggingface.co</HuggingFaceBase>
+    <Phi4Path>microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4</Phi4Path>
+    <MiniLMPath>sentence-transformers/all-MiniLM-L6-v2/resolve/main</MiniLMPath>
+  </PropertyGroup>
+
+  <Target Name="DownloadModels" BeforeTargets="Build"
+          Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' != 'true'">
+
+    <!-- Phi-4-mini config files -->
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(Phi4Path)/genai_config.json"
+                  DestinationFolder="$(ModelsDir)/phi-4-mini"
+                  DestinationFileName="genai_config.json"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/phi-4-mini/genai_config.json')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(Phi4Path)/tokenizer.json"
+                  DestinationFolder="$(ModelsDir)/phi-4-mini"
+                  DestinationFileName="tokenizer.json"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/phi-4-mini/tokenizer.json')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(Phi4Path)/tokenizer_config.json"
+                  DestinationFolder="$(ModelsDir)/phi-4-mini"
+                  DestinationFileName="tokenizer_config.json"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/phi-4-mini/tokenizer_config.json')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(Phi4Path)/model.onnx"
+                  DestinationFolder="$(ModelsDir)/phi-4-mini"
+                  DestinationFileName="model.onnx"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/phi-4-mini/model.onnx')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(Phi4Path)/model.onnx.data"
+                  DestinationFolder="$(ModelsDir)/phi-4-mini"
+                  DestinationFileName="model.onnx.data"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/phi-4-mini/model.onnx.data')" />
+
+    <!-- all-MiniLM-L6-v2 -->
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(MiniLMPath)/onnx/model.onnx"
+                  DestinationFolder="$(ModelsDir)/all-MiniLM-L6-v2"
+                  DestinationFileName="model.onnx"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/all-MiniLM-L6-v2/model.onnx')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(MiniLMPath)/onnx/model_qint8_arm64.onnx"
+                  DestinationFolder="$(ModelsDir)/all-MiniLM-L6-v2"
+                  DestinationFileName="model_qint8_arm64.onnx"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/all-MiniLM-L6-v2/model_qint8_arm64.onnx')" />
+
+    <DownloadFile SourceUrl="$(HuggingFaceBase)/$(MiniLMPath)/vocab.txt"
+                  DestinationFolder="$(ModelsDir)/all-MiniLM-L6-v2"
+                  DestinationFileName="vocab.txt"
+                  SkipUnchangedFiles="true"
+                  Condition="!Exists('$(ModelsDir)/all-MiniLM-L6-v2/vocab.txt')" />
+
+    <Message Importance="high" Text="ONNX models ready at $(ModelsDir)" />
+  </Target>
+
+</Project>

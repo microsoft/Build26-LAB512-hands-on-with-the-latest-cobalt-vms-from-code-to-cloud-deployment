@@ -1,0 +1,168 @@
+﻿@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.AI
+@using eShop.WebApp.Chatbot
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject CatalogService CatalogService
+@inject IProductImageUrlProvider ProductImages
+@inject BasketState BasketState
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILoggerFactory LoggerFactory
+@inject IServiceProvider ServiceProvider
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<div class="floating-pane">
+    <a href="@Nav.GetUriWithQueryParameter("chat", (string?)null)" class="hide-chatbot" title="Close .NET Concierge"><span>✖</span></a>
+
+    <div class="chatbot-chat" @ref="chat">
+        @if (chatState is not null)
+        {
+            for (var i = 0; i < chatState.Messages.Count; i++)
+            {
+                var message = chatState.Messages[i];
+                if (message.Role != ChatRole.Assistant && message.Role != ChatRole.User) { continue; }
+                if (string.IsNullOrEmpty(message.Text)) { continue; }
+
+                var cards = message.Role == ChatRole.Assistant ? chatState.GetProductCardsForMessage(i) : null;
+                var hasCards = cards is { Count: > 0 };
+
+                @if (!hasCards)
+                {
+                    <p @key="@message" class="message message-@message.Role">@MessageProcessor.AllowImages(message.Text)</p>
+                }
+
+                @if (hasCards)
+                {
+                    <p @key="@message" class="message message-assistant">Here's what I found:</p>
+                    <div class="product-cards">
+                        @foreach (var card in cards!)
+                        {
+                            <div class="product-card">
+                                <img src="@card.ImageUrl" alt="@card.Name" class="product-card-img" />
+                                <div class="product-card-info">
+                                    <span class="product-card-name">@card.Name</span>
+                                    <span class="product-card-price">@card.Price</span>
+                                </div>
+                                <button class="product-card-btn" @onclick="() => AddToCartFromCard(card.Id)" title="Add to cart">🛒</button>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        }
+        else if (missingConfiguration)
+        {
+            <p class="message message-assistant"><strong>The chatbot is missing required configuration.</strong> Please set 'useOpenAI = true' in eShop.AppHost/Program.cs. You'll need an API key or an Azure Subscription to enable AI features.</p>
+        }
+
+        @if (thinking)
+        {
+            <p class="thinking">Thinking...</p>
+        }
+    </div>
+
+    <form class="chatbot-input" @onsubmit="SendMessageAsync">
+        <textarea placeholder="Start chatting..." @ref="@textbox" @bind="messageToSend"></textarea>
+        <button type="submit" title="Send" disabled="@(chatState is null)">Send</button>
+    </form>
+</div>
+
+@code {
+    bool missingConfiguration;
+    ChatState? chatState;
+    ElementReference textbox;
+    ElementReference chat;
+    string? messageToSend;
+    bool thinking;
+    IJSObjectReference? jsModule;
+    CancellationTokenSource? activeCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = ServiceProvider.GetService<IChatClient>();
+        if (client is not null)
+        {
+            AuthenticationState auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            // Streaming is opt-in via env var (set in AKS overlay). Defaults off so
+            // local/dev behavior matches the existing non-streaming code path.
+            var streamingFlag = Configuration["WEBAPP_STREAMING_ENABLED"] ?? Environment.GetEnvironmentVariable("WEBAPP_STREAMING_ENABLED");
+            var streamingEnabled = streamingFlag == "1" || string.Equals(streamingFlag, "true", StringComparison.OrdinalIgnoreCase);
+            chatState = new ChatState(CatalogService, BasketState, auth.User, ProductImages, LoggerFactory, client, streamingEnabled);
+        }
+        else
+        {
+            missingConfiguration = true;
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        var messageCopy = messageToSend?.Trim();
+        messageToSend = null;
+
+        if (chatState is not null && !string.IsNullOrEmpty(messageCopy))
+        {
+            // Cancel any in-flight generation from a previous message — user clearly moved on.
+            activeCts?.Cancel();
+            activeCts?.Dispose();
+            activeCts = new CancellationTokenSource();
+            var ct = activeCts.Token;
+
+            thinking = true;
+            try
+            {
+                await chatState.AddUserMessageAsync(messageCopy, onMessageAdded: StateHasChanged, ct);
+            }
+            catch (OperationCanceledException) { /* superseded */ }
+            finally
+            {
+                thinking = false;
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Closing the chat panel cancels any in-flight streaming so we don't waste
+        // inference CPU on tokens nobody will ever see.
+        try { activeCts?.Cancel(); } catch { }
+        activeCts?.Dispose();
+        if (jsModule is not null)
+        {
+            try { await jsModule.DisposeAsync(); } catch { }
+        }
+    }
+
+    private async Task AddToCartFromCard(int itemId)
+    {
+        try
+        {
+            var item = await CatalogService.GetCatalogItem(itemId);
+            if (item is not null)
+            {
+                await BasketState.AddAsync(item);
+                chatState?.Messages.Add(new ChatMessage(ChatRole.Assistant, $"Added {item.Name} to your cart!"));
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            chatState?.Messages.Add(new ChatMessage(ChatRole.Assistant, "Unable to add item to cart. You may need to log in first."));
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        jsModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Chatbot/Chatbot.razor.js");
+        await jsModule.InvokeVoidAsync("scrollToEnd", chat);
+
+        if (firstRender)
+        {
+            await textbox.FocusAsync();
+            await jsModule.InvokeVoidAsync("submitOnEnter", textbox);
+        }
+    }
+}

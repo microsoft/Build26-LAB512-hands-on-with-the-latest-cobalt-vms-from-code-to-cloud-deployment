@@ -1,0 +1,580 @@
+{
+  "resources": {
+    "redis": {
+      "type": "container.v0",
+      "connectionString": "{redis.bindings.tcp.host}:{redis.bindings.tcp.port},password={redis-password.value}{cond-redis-bindings-tcp-tlsenabled-d148d83a.connectionString}",
+      "image": "docker.io/library/redis:8.6",
+      "entrypoint": "/bin/sh",
+      "args": [
+        "-c",
+        "redis-server --requirepass $REDIS_PASSWORD"
+      ],
+      "env": {
+        "REDIS_PASSWORD": "{redis-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "redis",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 6379
+        }
+      }
+    },
+    "eventbus": {
+      "type": "container.v0",
+      "connectionString": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+      "image": "docker.io/library/rabbitmq:4.2",
+      "env": {
+        "RABBITMQ_DEFAULT_USER": "guest",
+        "RABBITMQ_DEFAULT_PASS": "{eventbus-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5672
+        }
+      }
+    },
+    "postgres": {
+      "type": "container.v0",
+      "connectionString": "Host={postgres.bindings.tcp.host};Port={postgres.bindings.tcp.port};Username=postgres;Password={postgres-password.value}",
+      "image": "docker.io/ankane/pgvector:latest",
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{postgres-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
+    },
+    "catalogdb": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=catalogdb"
+    },
+    "identitydb": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=identitydb"
+    },
+    "orderingdb": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=orderingdb"
+    },
+    "webhooksdb": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=webhooksdb"
+    },
+    "identity-api": {
+      "type": "project.v0",
+      "path": "../Identity.API/Identity.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{identity-api.bindings.http.targetPort}",
+        "ConnectionStrings__identitydb": "{identitydb.connectionString}",
+        "IDENTITYDB_HOST": "{postgres.bindings.tcp.host}",
+        "IDENTITYDB_PORT": "{postgres.bindings.tcp.port}",
+        "IDENTITYDB_USERNAME": "postgres",
+        "IDENTITYDB_PASSWORD": "{postgres-password.value}",
+        "IDENTITYDB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/identitydb",
+        "IDENTITYDB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/identitydb",
+        "IDENTITYDB_DATABASENAME": "identitydb",
+        "BasketApiClient": "{basket-api.bindings.http.url}",
+        "OrderingApiClient": "{ordering-api.bindings.http.url}",
+        "WebhooksApiClient": "{webhooks-api.bindings.http.url}",
+        "WebhooksWebClient": "{webhooksclient.bindings.https.url}",
+        "WebAppClient": "{webapp.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "basket-api": {
+      "type": "project.v0",
+      "path": "../Basket.API/Basket.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{basket-api.bindings.http.targetPort}",
+        "ConnectionStrings__redis": "{redis.connectionString}",
+        "REDIS_HOST": "{redis.bindings.tcp.host}",
+        "REDIS_PORT": "{redis.bindings.tcp.port}",
+        "REDIS_PASSWORD": "{redis-password.value}",
+        "REDIS_URI": "{redis.bindings.tcp.scheme}://:{redis-password-uri-encoded.value}@{redis.bindings.tcp.host}:{redis.bindings.tcp.port}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "Identity__Url": "{identity-api.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http2"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http2"
+        }
+      }
+    },
+    "catalog-api": {
+      "type": "project.v0",
+      "path": "../Catalog.API/Catalog.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{catalog-api.bindings.http.targetPort}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "ConnectionStrings__catalogdb": "{catalogdb.connectionString}",
+        "CATALOGDB_HOST": "{postgres.bindings.tcp.host}",
+        "CATALOGDB_PORT": "{postgres.bindings.tcp.port}",
+        "CATALOGDB_USERNAME": "postgres",
+        "CATALOGDB_PASSWORD": "{postgres-password.value}",
+        "CATALOGDB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/catalogdb",
+        "CATALOGDB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/catalogdb",
+        "CATALOGDB_DATABASENAME": "catalogdb"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "ordering-api": {
+      "type": "project.v0",
+      "path": "../Ordering.API/Ordering.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{ordering-api.bindings.http.targetPort}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "ConnectionStrings__orderingdb": "{orderingdb.connectionString}",
+        "ORDERINGDB_HOST": "{postgres.bindings.tcp.host}",
+        "ORDERINGDB_PORT": "{postgres.bindings.tcp.port}",
+        "ORDERINGDB_USERNAME": "postgres",
+        "ORDERINGDB_PASSWORD": "{postgres-password.value}",
+        "ORDERINGDB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/orderingdb",
+        "ORDERINGDB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/orderingdb",
+        "ORDERINGDB_DATABASENAME": "orderingdb",
+        "Identity__Url": "{identity-api.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "order-processor": {
+      "type": "project.v0",
+      "path": "../OrderProcessor/OrderProcessor.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{order-processor.bindings.http.targetPort}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "ConnectionStrings__orderingdb": "{orderingdb.connectionString}",
+        "ORDERINGDB_HOST": "{postgres.bindings.tcp.host}",
+        "ORDERINGDB_PORT": "{postgres.bindings.tcp.port}",
+        "ORDERINGDB_USERNAME": "postgres",
+        "ORDERINGDB_PASSWORD": "{postgres-password.value}",
+        "ORDERINGDB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/orderingdb",
+        "ORDERINGDB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/orderingdb",
+        "ORDERINGDB_DATABASENAME": "orderingdb"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "payment-processor": {
+      "type": "project.v0",
+      "path": "../PaymentProcessor/PaymentProcessor.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{payment-processor.bindings.http.targetPort}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "webhooks-api": {
+      "type": "project.v0",
+      "path": "../Webhooks.API/Webhooks.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{webhooks-api.bindings.http.targetPort}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "ConnectionStrings__webhooksdb": "{webhooksdb.connectionString}",
+        "WEBHOOKSDB_HOST": "{postgres.bindings.tcp.host}",
+        "WEBHOOKSDB_PORT": "{postgres.bindings.tcp.port}",
+        "WEBHOOKSDB_USERNAME": "postgres",
+        "WEBHOOKSDB_PASSWORD": "{postgres-password.value}",
+        "WEBHOOKSDB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/webhooksdb",
+        "WEBHOOKSDB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/webhooksdb",
+        "WEBHOOKSDB_DATABASENAME": "webhooksdb",
+        "Identity__Url": "{identity-api.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "mobile-bff": {
+      "type": "container.v0",
+      "image": "mcr.microsoft.com/dotnet/nightly/yarp:2.3-preview",
+      "entrypoint": "dotnet",
+      "args": [
+        "/app/yarp.dll"
+      ],
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CATALOG_API_HTTP": "{catalog-api.bindings.http.url}",
+        "REVERSEPROXY__ROUTES__route0__MATCH__PATH": "/catalog-api/api/catalog/items",
+        "REVERSEPROXY__ROUTES__route0__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route0__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route0__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route0__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route0__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route0__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route0__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route1__MATCH__PATH": "/catalog-api/api/catalog/items/by",
+        "REVERSEPROXY__ROUTES__route1__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route1__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route1__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route1__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route1__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route1__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route1__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route2__MATCH__PATH": "/catalog-api/api/catalog/items/{id}",
+        "REVERSEPROXY__ROUTES__route2__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route2__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route2__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route2__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route2__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route2__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route2__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route3__MATCH__PATH": "/catalog-api/api/catalog/items/by/{name}",
+        "REVERSEPROXY__ROUTES__route3__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route3__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route3__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route3__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route3__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route3__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route4__MATCH__PATH": "/catalog-api/api/catalog/items/withsemanticrelevance/{text}",
+        "REVERSEPROXY__ROUTES__route4__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route4__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route4__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route4__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route4__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route4__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route5__MATCH__PATH": "/catalog-api/api/catalog/items/withsemanticrelevance",
+        "REVERSEPROXY__ROUTES__route5__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route5__MATCH__QUERYPARAMETERS__0__VALUES__0": "2.0",
+        "REVERSEPROXY__ROUTES__route5__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route5__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route5__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route6__MATCH__PATH": "/catalog-api/api/catalog/items/type/{typeId}/brand/{brandId?}",
+        "REVERSEPROXY__ROUTES__route6__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route6__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route6__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route6__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route6__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route6__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route7__MATCH__PATH": "/catalog-api/api/catalog/items/type/all/brand/{brandId?}",
+        "REVERSEPROXY__ROUTES__route7__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route7__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route7__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route7__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route7__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route7__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route8__MATCH__PATH": "/catalog-api/api/catalog/catalogTypes",
+        "REVERSEPROXY__ROUTES__route8__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route8__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route8__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route8__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route8__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route8__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route8__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route9__MATCH__PATH": "/catalog-api/api/catalog/catalogBrands",
+        "REVERSEPROXY__ROUTES__route9__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route9__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route9__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route9__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route9__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route9__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route9__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route10__MATCH__PATH": "/catalog-api/api/catalog/items/{id}/pic",
+        "REVERSEPROXY__ROUTES__route10__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route10__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route10__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route10__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route10__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route10__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route10__TRANSFORMS__0__PathRemovePrefix": "/catalog-api",
+        "REVERSEPROXY__ROUTES__route11__MATCH__PATH": "/api/catalog/{*any}",
+        "REVERSEPROXY__ROUTES__route11__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route11__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route11__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route11__MATCH__QUERYPARAMETERS__0__VALUES__2": "2.0",
+        "REVERSEPROXY__ROUTES__route11__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route11__CLUSTERID": "cluster_catalog-api",
+        "REVERSEPROXY__ROUTES__route12__MATCH__PATH": "/api/orders/{*any}",
+        "REVERSEPROXY__ROUTES__route12__MATCH__QUERYPARAMETERS__0__NAME": "api-version",
+        "REVERSEPROXY__ROUTES__route12__MATCH__QUERYPARAMETERS__0__VALUES__0": "1.0",
+        "REVERSEPROXY__ROUTES__route12__MATCH__QUERYPARAMETERS__0__VALUES__1": "1",
+        "REVERSEPROXY__ROUTES__route12__MATCH__QUERYPARAMETERS__0__ISCASESENSITIVE": "False",
+        "REVERSEPROXY__ROUTES__route12__CLUSTERID": "cluster_ordering-api",
+        "REVERSEPROXY__ROUTES__route13__MATCH__PATH": "/identity/{*any}",
+        "REVERSEPROXY__ROUTES__route13__CLUSTERID": "cluster_identity-api",
+        "REVERSEPROXY__ROUTES__route13__TRANSFORMS__0__PathRemovePrefix": "/identity",
+        "REVERSEPROXY__CLUSTERS__cluster_catalog-api__DESTINATIONS__destination1__ADDRESS": "https\u002Bhttp://catalog-api",
+        "REVERSEPROXY__CLUSTERS__cluster_ordering-api__DESTINATIONS__destination1__ADDRESS": "http://_http.ordering-api",
+        "REVERSEPROXY__CLUSTERS__cluster_identity-api__DESTINATIONS__destination1__ADDRESS": "http://_http.identity-api",
+        "services__catalog-api__http__0": "{catalog-api.bindings.http.url}",
+        "CATALOG_API_HTTPS": "{catalog-api.bindings.https.url}",
+        "services__catalog-api__https__0": "{catalog-api.bindings.https.url}",
+        "ORDERING_API_HTTP": "{ordering-api.bindings.http.url}",
+        "services__ordering-api__http__0": "{ordering-api.bindings.http.url}",
+        "IDENTITY_API_HTTP": "{identity-api.bindings.http.url}",
+        "services__identity-api__http__0": "{identity-api.bindings.http.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 5000,
+          "external": true
+        }
+      }
+    },
+    "webhooksclient": {
+      "type": "project.v0",
+      "path": "../WebhookClient/WebhookClient.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{webhooksclient.bindings.http.targetPort}",
+        "WEBHOOKS_API_HTTP": "{webhooks-api.bindings.http.url}",
+        "services__webhooks-api__http__0": "{webhooks-api.bindings.http.url}",
+        "WEBHOOKS_API_HTTPS": "{webhooks-api.bindings.https.url}",
+        "services__webhooks-api__https__0": "{webhooks-api.bindings.https.url}",
+        "IdentityUrl": "{identity-api.bindings.https.url}",
+        "CallBackUrl": "{webhooksclient.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        }
+      }
+    },
+    "webapp": {
+      "type": "project.v0",
+      "path": "../WebApp/WebApp.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{webapp.bindings.http.targetPort}",
+        "BASKET_API_HTTP": "{basket-api.bindings.http.url}",
+        "services__basket-api__http__0": "{basket-api.bindings.http.url}",
+        "BASKET_API_HTTPS": "{basket-api.bindings.https.url}",
+        "services__basket-api__https__0": "{basket-api.bindings.https.url}",
+        "CATALOG_API_HTTP": "{catalog-api.bindings.http.url}",
+        "services__catalog-api__http__0": "{catalog-api.bindings.http.url}",
+        "CATALOG_API_HTTPS": "{catalog-api.bindings.https.url}",
+        "services__catalog-api__https__0": "{catalog-api.bindings.https.url}",
+        "ORDERING_API_HTTP": "{ordering-api.bindings.http.url}",
+        "services__ordering-api__http__0": "{ordering-api.bindings.http.url}",
+        "ORDERING_API_HTTPS": "{ordering-api.bindings.https.url}",
+        "services__ordering-api__https__0": "{ordering-api.bindings.https.url}",
+        "ConnectionStrings__eventbus": "{eventbus.connectionString}",
+        "EVENTBUS_HOST": "{eventbus.bindings.tcp.host}",
+        "EVENTBUS_PORT": "{eventbus.bindings.tcp.port}",
+        "EVENTBUS_USERNAME": "guest",
+        "EVENTBUS_PASSWORD": "{eventbus-password.value}",
+        "EVENTBUS_URI": "amqp://guest:{eventbus-password-uri-encoded.value}@{eventbus.bindings.tcp.host}:{eventbus.bindings.tcp.port}",
+        "IdentityUrl": "{identity-api.bindings.https.url}",
+        "CallBackUrl": "{webapp.bindings.https.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "redis-password": {
+      "type": "parameter.v0",
+      "value": "{redis-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22,
+              "special": false
+            }
+          }
+        }
+      }
+    },
+    "redis-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{redis-password.value}",
+      "filter": "uri"
+    },
+    "eventbus-password": {
+      "type": "parameter.v0",
+      "value": "{eventbus-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22,
+              "special": false
+            }
+          }
+        }
+      }
+    },
+    "eventbus-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{eventbus-password.value}",
+      "filter": "uri"
+    },
+    "postgres-password": {
+      "type": "parameter.v0",
+      "value": "{postgres-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "postgres-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{postgres-password.value}",
+      "filter": "uri"
+    },
+    "cond-redis-bindings-tcp-tlsenabled-d148d83a": {
+      "type": "value.v0",
+      "connectionString": ""
+    }
+  }
+}

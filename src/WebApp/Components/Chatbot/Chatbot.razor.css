@@ -1,0 +1,213 @@
+﻿.floating-pane {
+    position: fixed;
+    padding-top: 1em;
+    width: 25rem;
+    height: 35rem;
+    right: 3rem;
+    bottom: 3rem;
+    border: 0.0625rem solid silver;
+    border-radius: 0.5rem;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    font-weight: 400;
+    font-family: "Segoe UI", arial, helvetica;
+    animation: slide-in-from-right 0.3s ease-out;
+    z-index: 2;
+}
+
+@keyframes slide-in-from-right {
+    0% {
+        transform: translateX(30rem);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.hide-chatbot {
+    border: none;
+    background-color: #B4B4B8;
+    color: white;
+    position: absolute;
+    top: 0.25rem;
+    right: 0.18rem;
+    border-radius: 0.55rem;
+    width: 2rem;
+    height: 2rem;
+    z-index: 10;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chatbot-input {
+    margin-top: auto;
+    display: flex;
+    position: relative;
+    border: 0.125rem solid #f4f0f4;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    margin: 0.5rem 0.75rem;
+    gap: 0.3rem;
+    height: 3.5rem;
+    align-items: stretch;
+    flex-shrink: 0;
+}
+
+    .chatbot-input textarea {
+        width: 100%;
+        background: none;
+        border: none;
+        outline: none;
+        resize: none;
+        font-weight: 400;
+        font-family: "Segoe UI", arial, helvetica;
+        font-size: 16px;
+    }
+
+    .chatbot-input button {
+        width: 6.25rem;
+        height: 3.125rem;
+        border-radius: 0.5rem;
+        border-width: 0;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.6rem 0.8rem;
+        text-align: center;
+    }
+
+.chatbot-chat {
+    overflow-y: scroll;
+    height: 100%;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+}
+
+    .chatbot-chat .message {
+        padding: 0.5rem 1rem;
+        border-radius: 1.25rem;
+        max-width: 85%;
+        display: inline-block;
+        white-space: break-spaces;
+        overflow-x: clip;
+        margin-bottom: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .chatbot-chat .message-assistant {
+        background-color: #f4f0f4;
+        margin-right: auto;
+    }
+
+    .chatbot-chat .message-user {
+        background-color: #102c57;
+        margin-left: auto;
+        color: white;
+    }
+
+    .chatbot-chat ::deep img {
+        max-height: 10rem;
+    }
+
+    /* Product cards */
+    .chatbot-chat .product-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        max-width: 95%;
+    }
+
+    .chatbot-chat .product-card {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.6rem;
+        padding: 0.4rem 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        transition: box-shadow 0.2s;
+    }
+
+    .chatbot-chat .product-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .chatbot-chat .product-card-img {
+        width: 3rem;
+        height: 3rem;
+        object-fit: cover;
+        border-radius: 0.4rem;
+        flex-shrink: 0;
+    }
+
+    .chatbot-chat .product-card-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .chatbot-chat .product-card-name {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #222;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chatbot-chat .product-card-price {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: #2e7d32;
+    }
+
+    .chatbot-chat .product-card-btn {
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        border: none;
+        border-radius: 50%;
+        background: #102c57;
+        color: white;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .chatbot-chat .product-card-btn:hover {
+        background: #1a4a8a;
+    }
+
+    .thinking {
+        color: gray;
+        font-style: italic;
+        animation: fade-in-and-out 1s infinite;
+        padding: 0;
+        margin: 0;
+        padding-left: 0.6rem;
+        font-size: 90%;
+    }
+
+@keyframes fade-in-and-out {
+    0% {
+        opacity: 0.2;
+    }
+
+    50% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 0.2;
+    }
+}

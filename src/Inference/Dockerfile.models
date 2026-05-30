@@ -1,0 +1,16 @@
+FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS select
+ARG TARGETARCH
+WORKDIR /models
+
+COPY models/phi-4-mini/ /models/phi-4-mini/
+COPY models/all-MiniLM-L6-v2/ /models/all-MiniLM-L6-v2/
+
+# Select the correct architecture-specific embedding model
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      mv /models/all-MiniLM-L6-v2/model_qint8_arm64.onnx /models/all-MiniLM-L6-v2/model.onnx; \
+    else \
+      rm -f /models/all-MiniLM-L6-v2/model_qint8_arm64.onnx; \
+    fi
+
+FROM scratch
+COPY --from=select /models /models

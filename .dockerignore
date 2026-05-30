@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.git/
+*.user
+*.suo
+.vs/
+tests/
+src/ClientApp/
+src/HybridApp/
+src/eShop.AppHost/

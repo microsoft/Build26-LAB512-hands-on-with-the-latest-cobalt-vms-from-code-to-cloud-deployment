@@ -1,49 +1,63 @@
 # AI Agent Guidelines
 
-This file contains instructions and guidelines for AI agents working on this repository.
+This repository contains **Microsoft Build 2026 LAB512** - a hands-on lab where attendees build, deploy, and run the .NET eShop application on Azure Cobalt 200 Arm64 VMs. The lab covers multi-arch container builds, AKS deployment, and on-CPU AI inference with ONNX Runtime.
 
-## 🔒 Security Best Practices
+## Repository structure
 
-**Never commit sensitive information to this repository:**
-- API keys, tokens, or credentials
-- Personal access tokens (PATs)
-- Database connection strings with passwords
-- Environment-specific configuration values
+| Path | Purpose |
+|:-----|:--------|
+| `src/` | .NET eShop application source code and Dockerfiles |
+| `deploy/k8s/base/` | Shared Kubernetes manifests (deployments, services, infra) |
+| `deploy/k8s/overlays/local/` | Kustomize overlay for Docker Desktop Kubernetes |
+| `deploy/k8s/overlays/aks/` | Kustomize overlay for AKS on Cobalt 200 |
+| `docs/` | Self-paced lab guides (setup, parts 1-3, troubleshooting) |
+| `models/` | Gitignored - ONNX model weights downloaded by `prepare-models.cmd` |
+| `img/` | Screenshots and QR codes for documentation |
 
-**For MCP configuration files (`mcp.json`):**
-- Use placeholder values like `"YOUR_API_KEY_HERE"` or `"${API_KEY}"`
-- Reference environment variables for sensitive data
-- Include documentation about required environment variables
+## Build and run
 
-## 📋 Repository Guidelines
+```cmd
+REM Download ONNX models (required before building inference images)
+prepare-models.cmd
 
-### Purpose
-This repository is a Microsoft Build 2026 session content repository and should:
-- Provide clear, actionable content for session attendees
-- Support self-guided learning for remote/at-home learners
-- Follow the structure established by GUIDANCE.md
+REM Build all service images as multi-arch and push to ACR
+docker buildx build --platform linux/amd64,linux/arm64 -t %ACR%.azurecr.io/eshop/<service>:latest -f src\<Service>\Dockerfile . --push
 
-### What NOT to modify without permission:
-- License files (`LICENSE`, `LICENSE-DOCS`, `CODE_OF_CONDUCT.md`)
-- Security files (`SECURITY.md`)
-- GitHub workflow files in `.github/` directory
+REM Deploy to local Docker Desktop Kubernetes
+kubectl apply -k deploy\k8s\overlays\local
 
-### Content Rules
-- No large binary files (PowerPoint decks, videos, recordings) in the repo
-- Links to slides and recordings are fine — just don't host the actual files
-- All README files should be kept up to date
-- Unused folders (containing only a placeholder README) should be removed before release
+REM Deploy to AKS on Cobalt 200
+kubectl apply -k deploy\k8s\overlays\aks
+```
 
-### Issue Management
-When a user reports a problem, asks a question that should be tracked, or wants to file an issue:
+## Rules for AI agents
 
-1. **Discover available templates** — Check `.github/ISSUE_TEMPLATE/` for any `.yml` or `.md` template files. Read them to understand what fields and labels each template expects.
-2. **Match the request to a template** — Based on what the user is describing, pick the best-fit template. If no templates exist, create a plain issue.
-3. **Help the user fill in the fields** — Walk through the template's required fields interactively, proposing answers where possible.
-4. **Create the issue** — Use `gh issue create --template <template-file>` if a template matches, or `gh issue create` for a plain issue.
-5. **Apply labels** — Check `gh label list` to see what labels exist in the repo. Apply relevant labels based on the issue type. Don't try to apply labels that don't exist.
+### Commands and syntax
+- All lab commands use **cmd.exe** syntax, not PowerShell. Use `set VAR=value`, `%VAR%`, and `^` for line continuation.
+- When editing docs in `docs/`, preserve cmd.exe syntax in all code blocks.
 
-When reviewing open issues at the start of each phase, summarize them and propose actions — this behavior already exists in the Issue Tracking and Commits section of GUIDANCE.md.
+### Kubernetes manifests
+- The `deploy/k8s/` tree uses Kustomize with a shared base and two overlays (local, aks). Changes to the base affect both environments.
+- Overlay files patch only what differs between environments (ports, hostnames, identity URLs). Do not duplicate base content into overlays.
+- The `inference` deployment is optional and activated separately in Part 3 of the lab.
 
-### Getting Started
-If this repo still has a `GUIDANCE.md` file, that means setup isn't complete yet. Read it and follow the instructions to prepare the repo for publication.
+### Container images
+- All application images must build as multi-arch (`linux/amd64` + `linux/arm64`) except during the Part 1 x64-only webapp step (which is intentional for the multi-arch reveal in Part 2).
+- Dockerfiles use `FROM --platform=$BUILDPLATFORM` for the SDK stage and `dotnet publish -a $TARGETARCH` to cross-compile without QEMU.
+- Infrastructure images (Redis, RabbitMQ, Postgres, busybox) are imported from Docker Hub, not built from source.
+
+### Models and large files
+- The `models/` directory is gitignored. Never commit `.onnx` or `.onnx.data` files.
+- Model weights are downloaded at build time via `prepare-models.cmd`, which calls `dotnet msbuild src\Inference\Inference.csproj -t:DownloadModels`.
+- The `inference-models` image must be built before the `inference` image (it supplies the model files via a multi-stage copy).
+
+### Documentation
+- Self-paced guides in `docs/` are the attendee-facing content. Keep them clear and step-by-step.
+- Do not add instructor-only or Skillable-specific content to this repository.
+- Use "Arm64" (not "ARM64") and "Windows Arm64" (two words, no hyphen).
+
+## Security
+
+- Never commit API keys, tokens, credentials, or connection strings.
+- Do not modify license files (`LICENSE`, `LICENSE-DOCS`), `CODE_OF_CONDUCT.md`, or `SECURITY.md`.
+- Use environment variables (`%ACR%`, `%RG%`, `%AKS%`, `%LOC%`) for all user-specific values.
