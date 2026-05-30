@@ -1,19 +1,23 @@
 name: Playwright Tests for eShop
+
+# Disabled for this lab repo - e2e tests require a running eShop instance.
+# Uncomment the triggers below to re-enable.
 on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'src/ClientApp/**'
-      - 'tests/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
-  pull_request:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'src/ClientApp/**'
-      - 'test/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
+  workflow_dispatch:
+#  push:
+#    branches: [ main ]
+#    paths-ignore:
+#      - '**.md'
+#      - 'src/ClientApp/**'
+#      - 'tests/ClientApp.UnitTests/**'
+#      - '.github/workflows/pr-validation-maui.yml'
+#  pull_request:
+#    branches: [ main ]
+#    paths-ignore:
+#      - '**.md'
+#      - 'src/ClientApp/**'
+#      - 'test/ClientApp.UnitTests/**'
+#      - '.github/workflows/pr-validation-maui.yml'
 jobs:
   test:
     timeout-minutes: 60

@@ -1,20 +1,23 @@
 name: eShop Pull Request Validation - .NET MAUI
 
+# Disabled for this lab repo - the repo name exceeds Windows 260-char path
+# limits when combined with deep .cs file paths. Uncomment to re-enable.
 on:
-  pull_request:
-    branches:
-      - '**'
-    paths:
-      - 'src/ClientApp/**'
-      - 'tests/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/ClientApp/**'
-      - 'tests/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
+  workflow_dispatch:
+#  pull_request:
+#    branches:
+#      - '**'
+#    paths:
+#      - 'src/ClientApp/**'
+#      - 'tests/ClientApp.UnitTests/**'
+#      - '.github/workflows/pr-validation-maui.yml'
+#  push:
+#    branches:
+#      - main
+#    paths:
+#      - 'src/ClientApp/**'
+#      - 'tests/ClientApp.UnitTests/**'
+#      - '.github/workflows/pr-validation-maui.yml'
 
 jobs:  
   test:
