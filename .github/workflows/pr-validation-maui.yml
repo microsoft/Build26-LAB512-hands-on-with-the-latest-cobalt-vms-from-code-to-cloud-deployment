@@ -1,27 +1,15 @@
 name: eShop Pull Request Validation - .NET MAUI
 
+# Disabled for this lab repo - the repo name (87 chars) causes Android AAPT2
+# path length failures that cannot be fixed without renaming the repo.
+# The MAUI ClientApp is not part of the lab exercises.
 on:
-  pull_request:
-    branches:
-      - '**'
-    paths:
-      - 'src/ClientApp/**'
-      - 'tests/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/ClientApp/**'
-      - 'tests/ClientApp.UnitTests/**'
-      - '.github/workflows/pr-validation-maui.yml'
+  workflow_dispatch:
 
 jobs:  
   test:
     runs-on: windows-latest    
     steps:
-      - name: Enable long paths
-        run: git config --system core.longpaths true
       - uses: actions/checkout@v4
       - name: Setup .NET (global.json)
         uses: actions/setup-dotnet@v3
