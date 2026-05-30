@@ -20,11 +20,9 @@ jobs:
   test:
     runs-on: windows-latest    
     steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
       - name: Enable long paths
         run: git config --system core.longpaths true
+      - uses: actions/checkout@v4
       - name: Setup .NET (global.json)
         uses: actions/setup-dotnet@v3
 

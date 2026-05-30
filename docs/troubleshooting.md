@@ -134,7 +134,7 @@ kubectl -n eshop exec <pod-name> -- curl -s -o /dev/null -w "%%{http_code}" http
 | Symptom | Likely cause | Fix |
 |:--------|:-------------|:----|
 | `EXTERNAL-IP` shows `<pending>` for more than 2 minutes | LoadBalancer provisioning slow | Wait; on AKS this can take up to 3 minutes the first time |
-| Browser cannot reach `http://localhost:8080` | Windows Firewall blocked Docker Desktop, or the port is held by another process | Check the firewall prompt was accepted; `netstat -ano | findstr :8080` to find conflicts |
+| Browser cannot reach `http://localhost:8080` | Windows Firewall blocked Docker Desktop, or the port is held by another process | Check the firewall prompt was accepted; `netstat -ano \| findstr :8080` to find conflicts |
 | AKS DNS hostname does not resolve | DNS propagation delay, or wrong `LAB512_DNS_LABEL` | `nslookup %LAB512_DNS_LABEL%.westus3.cloudapp.azure.com`; re-check the value |
 
 ## Sign-in and OIDC
