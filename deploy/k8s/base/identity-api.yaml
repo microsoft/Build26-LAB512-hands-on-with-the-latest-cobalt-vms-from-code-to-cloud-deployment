@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-api
+  labels:
+    app.kubernetes.io/name: identity-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: identity-api
+      app.kubernetes.io/part-of: eshop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: identity-api
+        app.kubernetes.io/part-of: eshop
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z postgres 5432; do sleep 2; done']
+      containers:
+        - name: identity-api
+          image: eshop/identity-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+              value: "true"
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: ConnectionStrings__identitydb
+              value: Host=postgres;Port=5432;Username=postgres;Password=postgrespass;Database=identitydb
+            - name: BasketApiClient
+              value: http://basket-api
+            - name: OrderingApiClient
+              value: http://ordering-api
+            - name: WebhooksApiClient
+              value: http://webhooks-api
+            - name: WebhooksWebClient
+              value: http://webhooksclient
+            - name: WebAppClient
+              value: http://webapp
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-api
+  labels:
+    app.kubernetes.io/name: identity-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: identity-api
+    app.kubernetes.io/part-of: eshop
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

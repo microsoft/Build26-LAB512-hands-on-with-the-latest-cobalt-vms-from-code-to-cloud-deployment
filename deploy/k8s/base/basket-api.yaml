@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basket-api
+  labels:
+    app.kubernetes.io/name: basket-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: basket-api
+      app.kubernetes.io/part-of: eshop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: basket-api
+        app.kubernetes.io/part-of: eshop
+    spec:
+      initContainers:
+        - name: wait-for-redis
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z redis 6379; do sleep 2; done']
+        - name: wait-for-rabbitmq
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z rabbitmq 5672; do sleep 2; done']
+      containers:
+        - name: basket-api
+          image: eshop/basket-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+              value: "true"
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: ConnectionStrings__redis
+              value: redis:6379,password=redispass
+            - name: ConnectionStrings__eventbus
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: Identity__Url
+              value: http://identity-api
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: basket-api
+  labels:
+    app.kubernetes.io/name: basket-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: basket-api
+    app.kubernetes.io/part-of: eshop
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

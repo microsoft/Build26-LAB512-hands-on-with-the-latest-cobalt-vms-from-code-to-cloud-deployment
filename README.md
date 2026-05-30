@@ -1,92 +1,118 @@
-# 🚀 Get Started
-
-**This repo is where attendees go to continue their learning after your session — and your Copilot agent will help you set it up.**
-
-### Step 1: Open your repo
-
-Open this repo in a **Codespace** (click the green **Code** button → **Create a Codespace**) — or clone it locally. Then open **GitHub Copilot Chat**.
-
-### Step 2: Add your content
-
-Give the agent something to work with. Drag files into the Explorer panel — session abstracts, outlines, screenshots, notes — and drop them in one of two places:
-
-| Where to put it | What goes there | Who sees it |
-|---|---|---|
-| **`_remove-before-publish/`** | Internal reference materials (abstracts, outlines, screenshots, planning docs) | **Copilot only** — never published |
-| **`/docs/`, `/src/`, or repo root** | Lab instructions, demo code, sample data, getting-started guides | **Attendees** — published with the repo |
-
-> 💡 Not sure? Start by dropping your session abstract or outline into `_remove-before-publish/`. The agent will figure out what to do with it.
-
-### Step 3: Ask the Agent
-
-Once your content is in the repo, use these three phrases with Copilot to build out your session repo:
-
-| Phrase to use with Copilot | What it does | When to run it |
-|---|---|---|
-| **"Help me get started"** | Sets up session title, description, outcomes, and owners | After you've added your session abstract or outline to the repo |
-| **"Help me refine content"** | Organizes your session content into the repo | Each time you add or update content |
-| **"Help me finalize"** | Final review, cleanup, and publication prep | When you're ready to publish |
-
-> 💡 **These three phrases are just the starting point.** Copilot can do much more — try asking it to brainstorm next steps for attendees, generate code samples, or build out your repo structure. Don't be afraid to put it in plan mode and ask for what you need.
-
----
-
 <p align="center">
 <img src="img/banner-build-26.png" alt="Microsoft Build 2026" width="1200"/>
 </p>
 
 # [Microsoft Build 2026](https://build.microsoft.com)
 
-## 🔥 BRKXXX: SESSION TITLE
+## 🔥 LAB512: Hands-on with the latest Cobalt VMs - from code to cloud deployment
 
 ### Session Description
 
-*Add Session Description*
+Roll up your sleeves and get hands-on with the latest Azure Cobalt VMs. Build multi-arch container images with Docker, push them to ACR, and deploy to AKS clusters running on Cobalt VMs. Then go further - serve AI predictions using ONNX Runtime on Arm. Walk out ready to build on Cobalt VMs.
+
+You will take a real .NET microservices application - the [eShop reference app](https://github.com/dotnet/eshop) - and:
+
+1. **Build and run it locally** on Docker Desktop Kubernetes
+2. **Deploy the same images to AKS on Azure Cobalt 200** - no special Arm64 branch, no code rewrites
+3. **Light up on-CPU AI inference** using ONNX Runtime GenAI and Phi-4-mini, running entirely on Cobalt 200 CPUs - no GPU, no cloud-hosted endpoints
+
+The key takeaway: Azure Cobalt 200 _just works_.
+
+### Azure Cobalt 200
+
+[Azure Cobalt 200](https://aka.ms/Cobalt200-VM-Pr) is Microsoft's second-generation custom Arm64 processor, purpose-built for cloud-native workloads. Built on the latest Arm architecture and TSMC's 3nm process, it delivers up to **50% higher per-core performance** over Cobalt 100 - with improvements across the board in CPU throughput, storage IOPS, and network bandwidth. It is Azure's most power-efficient compute offering.
+
+Cobalt 200 is designed for the workloads that define this era of cloud computing: containerized microservices, distributed data pipelines, web and application servers, databases, and agentic AI runtimes. It ships as a full family of VMs - general purpose (Dpsv7/Dplsv7), memory optimized (Epsv7), high-memory (Mpv4), and dense local storage (Lpv5) - so you can match the VM to the workload you actually run. If your stack is built on .NET, Java, Python, Go, or Node.js, it runs on Cobalt 200 with no code changes. This lab lets you experience that firsthand.
+
+### The app: eShop
+
+This lab uses [.NET eShop](https://github.com/dotnet/eshop) - the official .NET reference application for cloud-native development. It is a full-featured online storefront with product browsing, shopping cart, checkout, and user identity.
+
+<img src="img/eshop_homepage.png" alt="eShop homepage screenshot" width="600"/>
+
+### Lab outline
+
+| Part | What you'll do | Approx. time |
+|:-----|:---------------|:-------------|
+| [Part 1 - Local build and deploy](docs/part1-local-build-and-deploy.md) | Build the webapp image, deploy to Docker Desktop Kubernetes via Kustomize, verify the app end-to-end | 20 min |
+| [Part 2 - AKS on Cobalt 200](docs/part2-aks-on-cobalt.md) | Rebuild as a multi-arch image, create an AKS cluster on Cobalt 200, deploy and test | 20 min |
+| [Part 3 - AI inference on Cobalt](docs/part3-ai-inference-on-cobalt.md) | Enable the ONNX Runtime inference service, chat with Phi-4-mini running on Cobalt 200 CPUs | 15 min |
+
+If you run into issues, see the [Troubleshooting guide](docs/troubleshooting.md).
 
 ### 🏫 Getting started in a guided session
 
-To get started in a guided lab session:
-- <!-- step 1 -->
-- <!-- step 2 -->
-- <!-- step 3 -->
+Open the lab environment provided by your instructor. The VM is pre-configured with all tools and images - follow the on-screen Skillable instructions to begin.
 
-### 🏠 Getting started in your own environment
+### 🏠 Getting started on your own
 
-If you're following these steps at your own pace:
-- Clone this repository
-- Set up your development environment
-- <!-- step 3 -->
+See the [Self-paced lab guide](docs/README.md) for prerequisites, machine setup, and step-by-step instructions.
 
 ### 🧠 Learning Outcomes
 
-By the end of this session, you will be able to:
+By the end of this lab, you will be able to:
 
-- <!-- outcome 1 -->
-- <!-- outcome 2 -->
-- <!-- outcome 3 -->
+- Build **multi-arch container images** (`linux/amd64` + `linux/arm64`) from a single x64 dev machine using Docker Buildx
+- Deploy a microservices application to **AKS on Azure Cobalt 200** with zero code changes
+- Run a **3.8B parameter language model on CPU** using ONNX Runtime GenAI on Arm64 - no GPU required
+- Use **Kustomize overlays** to target local Kubernetes and AKS from the same manifest tree
 
 ### 💬 Keep Learning with Copilot
 
-Try these prompts with GitHub Copilot to explore the topics from this session. Open Copilot Chat in VS Code (`Ctrl+Alt+I` on Windows/Linux, `Cmd+Shift+I` on Mac), paste a prompt, and see what you learn. Try connecting the [Microsoft Learn MCP Server](#-microsoft-learn-mcp-server) for the latest official documentation.
+Try these prompts with GitHub Copilot to explore the topics from this lab. Open Copilot Chat in VS Code (`Ctrl+Alt+I` on Windows/Linux, `Cmd+Shift+I` on Mac), paste a prompt, and see what you learn. Try connecting the [Microsoft Learn MCP Server](#-microsoft-learn-mcp-server) for the latest official documentation.
 
-Use these as a starting point — or write your own!
+Use these as a starting point - or write your own!
 
-<!-- Prompts will be tailored to this session's content during repo setup. -->
+1. Understand multi-arch builds:
 
-> *Prompts coming soon — check back after the session content is finalized.*
+```
+Explain how Docker Buildx creates multi-arch container images and how Kubernetes automatically selects the right architecture variant for a node
+```
+
+2. Go deeper with Cobalt 200:
+
+```
+Using the Microsoft Learn MCP Server, find the latest documentation on Azure Cobalt 200 VM sizes and explain the performance benefits for cloud-native workloads
+```
+
+3. Explore ONNX Runtime on Arm:
+
+```
+How does ONNX Runtime GenAI use KleidiAI micro-kernels on Arm64 Neoverse cores to accelerate INT4 model inference without a GPU?
+```
+
+4. Extend the deployment:
+
+```
+Help me add a CI/CD pipeline using GitHub Actions that builds multi-arch images and deploys to AKS on Cobalt 200 automatically on every push
+```
+
+5. Try a different model:
+
+```
+Help me swap Phi-4-mini for a different ONNX-compatible small language model in the inference service and compare the results
+```
 
 ### 💻 Technologies Used
 
-1. <!-- technology 1 -->
-1. <!-- technology 2 -->
-1. <!-- technology 3 -->
+1. [Azure Cobalt 200](https://azure.microsoft.com/blog/introducing-azure-cobalt-100-based-virtual-machines/) - Microsoft's Arm64 server processor for cloud-native workloads
+1. [.NET eShop](https://github.com/dotnet/eshop) - official .NET reference application for cloud-native development
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [Buildx](https://docs.docker.com/buildx/working-with-buildx/) - multi-arch container image builds
+1. [Azure Kubernetes Service (AKS)](https://learn.microsoft.com/azure/aks/) - managed Kubernetes
+1. [Kustomize](https://kustomize.io/) - declarative Kubernetes configuration management
+1. [ONNX Runtime GenAI](https://onnxruntime.ai/) - local model inference on CPU
+1. [Phi-4-mini](https://huggingface.co/microsoft/Phi-4-mini-instruct) - Microsoft's 3.8B parameter small language model
 
 ### 📚 Resources and Next Steps
 
 | Resource | Description |
 |:---------|:------------|
-| [https://aka.ms/build26-next-steps](https://aka.ms/build26-next-steps) | Take the next step in your learning journey after Build 2026 |
-
+| [Azure Cobalt 200 documentation](https://learn.microsoft.com/azure/virtual-machines/cobalt-100-overview) | VM sizes, availability, and workload guidance |
+| [.NET Aspire documentation](https://learn.microsoft.com/dotnet/aspire/) | The orchestration framework behind eShop |
+| [ONNX Runtime documentation](https://onnxruntime.ai/docs/) | Running ML models on CPU, GPU, and NPU |
+| [Multi-arch Docker builds](https://docs.docker.com/build/building/multi-platform/) | Building images for multiple CPU architectures |
+| [Kustomize documentation](https://kubectl.docs.kubernetes.io/) | Managing Kubernetes manifests with overlays |
+| [Build 2026 next steps](https://aka.ms/build26-next-steps) | Continue your learning journey after Build 2026 |
 
 ### 🌟 Microsoft Learn MCP Server
 
@@ -100,17 +126,12 @@ For more information, setup instructions for other dev clients, and to post comm
 
 ## Content Owners
 
-<!-- TODO: Add yourself as a content owner
-1. Change the src in the image tag to {your github url}.png
-2. Change INSERT NAME HERE to your name
-3. Change the github url in the final href to your url. -->
-
 <table>
 <tr>
-    <td align="center"><a href="http://github.com/yourGitHubHandle">
-        <img src="https://github.com/yourGitHubHandle.png" width="100px;" alt="INSERT NAME HERE"/><br />
-        <sub><b>INSERT NAME HERE</b></sub></a><br />
-            <a href="https://github.com/yourGitHubHandle" title="talk">📢</a>
+    <td align="center"><a href="https://github.com/jamshedd">
+        <img src="https://github.com/jamshedd.png" width="100px;" alt="Jamshed Damkewala"/><br />
+        <sub><b>Jamshed Damkewala</b></sub></a><br />
+            <a href="https://github.com/jamshedd" title="talk">📢</a>
     </td>
 </tr></table>
 

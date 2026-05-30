@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  labels:
+    app.kubernetes.io/name: webapp
+    app.kubernetes.io/part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webapp
+      app.kubernetes.io/part-of: eshop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webapp
+        app.kubernetes.io/part-of: eshop
+    spec:
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z rabbitmq 5672; do sleep 2; done']
+      containers:
+        - name: webapp
+          image: eshop/webapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Development"
+            - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+              value: "true"
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: ASPNETCORE_HTTPS_PORTS
+              value: ""
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ConnectionStrings__eventbus
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: BASKET_API_HTTP
+              value: http://basket-api
+            - name: services__basket-api__http__0
+              value: http://basket-api
+            - name: CATALOG_API_HTTP
+              value: http://catalog-api
+            - name: services__catalog-api__http__0
+              value: http://catalog-api
+            - name: ORDERING_API_HTTP
+              value: http://ordering-api
+            - name: services__ordering-api__http__0
+              value: http://ordering-api
+            - name: IdentityUrl
+              value: http://identity-api
+            - name: CallBackUrl
+              value: http://webapp
+            - name: WEBAPP_STREAMING_ENABLED
+              value: "1"
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp
+  labels:
+    app.kubernetes.io/name: webapp
+    app.kubernetes.io/part-of: eshop
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: webapp
+    app.kubernetes.io/part-of: eshop
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

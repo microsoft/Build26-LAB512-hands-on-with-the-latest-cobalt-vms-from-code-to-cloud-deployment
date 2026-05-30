@@ -1,0 +1,105 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+  # Webapp: split identity URLs — internal for backchannel, external for browser
+  # Identity API: register webapp's browser-facing URL as valid redirect
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/imagePullPolicy
+      value: Always
+  target:
+    kind: Deployment
+    labelSelector: app.kubernetes.io/part-of=eshop
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: placeholder
+    spec:
+      template:
+        spec:
+          imagePullSecrets:
+          - name: acr-pull-secret
+  target:
+    kind: Deployment
+    labelSelector: app.kubernetes.io/part-of=eshop
+- patch: |-
+    - op: replace
+      path: /spec/type
+      value: LoadBalancer
+    - op: replace
+      path: /spec/ports/0/port
+      value: 8080
+  target:
+    kind: Service
+    name: webapp
+- patch: |-
+    - op: replace
+      path: /spec/type
+      value: LoadBalancer
+    - op: replace
+      path: /spec/ports/0/port
+      value: 5101
+  target:
+    kind: Service
+    name: identity-api
+- patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 0
+  target:
+    kind: Deployment
+    name: inference
+- patch: |-
+    - op: replace
+      path: /spec/type
+      value: LoadBalancer
+    - op: replace
+      path: /spec/ports/0/port
+      value: 5200
+  target:
+    kind: Service
+    name: inference
+- patch: |-
+    - op: test
+      path: /spec/template/spec/containers/0/env/12/name
+      value: IdentityUrl
+    - op: replace
+      path: /spec/template/spec/containers/0/env/12/value
+      value: http://identity-api:5101
+    - op: test
+      path: /spec/template/spec/containers/0/env/13/name
+      value: CallBackUrl
+    - op: replace
+      path: /spec/template/spec/containers/0/env/13/value
+      value: http://localhost:8080
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: IdentityUrlExternal
+        value: http://localhost:5101
+  target:
+    kind: Deployment
+    name: webapp
+- patch: |-
+    - op: test
+      path: /spec/template/spec/containers/0/env/4/name
+      value: Identity__Url
+    - op: replace
+      path: /spec/template/spec/containers/0/env/4/value
+      value: http://identity-api:5101
+  target:
+    kind: Deployment
+    labelSelector: app.kubernetes.io/name in (basket-api,ordering-api,webhooks-api)
+- patch: |-
+    - op: test
+      path: /spec/template/spec/containers/0/env/7/name
+      value: WebAppClient
+    - op: replace
+      path: /spec/template/spec/containers/0/env/7/value
+      value: http://localhost:8080
+  target:
+    kind: Deployment
+    name: identity-api

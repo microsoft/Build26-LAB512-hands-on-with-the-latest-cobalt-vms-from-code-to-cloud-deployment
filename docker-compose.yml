@@ -1,0 +1,236 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespass}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8.6
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-redispass}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "PING"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4.2
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  identity-api:
+    image: ${REGISTRY:-eshop}/identity-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Identity.API/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__identitydb: Host=postgres;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespass};Database=identitydb
+      BasketApiClient: ${BASKET_API_EXTERNAL_URL:-http://localhost:5103}
+      OrderingApiClient: ${ORDERING_API_EXTERNAL_URL:-http://localhost:5105}
+      WebhooksApiClient: ${WEBHOOKS_API_EXTERNAL_URL:-http://localhost:5108}
+      WebhooksWebClient: ${WEBHOOKSCLIENT_EXTERNAL_URL:-http://localhost:5109}
+      WebAppClient: ${WEBAPP_EXTERNAL_URL:-http://localhost:5100}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${IDENTITY_API_PORT:-5101}:8080"
+
+  basket-api:
+    image: ${REGISTRY:-eshop}/basket-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Basket.API/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ConnectionStrings__redis: redis:6379,password=${REDIS_PASSWORD:-redispass}
+      Identity__Url: http://identity-api:8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity-api:
+        condition: service_started
+    ports:
+      - "${BASKET_API_PORT:-5103}:8080"
+
+  catalog-api:
+    image: ${REGISTRY:-eshop}/catalog-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Catalog.API/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ConnectionStrings__catalogdb: Host=postgres;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespass};Database=catalogdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${CATALOG_API_PORT:-5104}:8080"
+
+  ordering-api:
+    image: ${REGISTRY:-eshop}/ordering-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Ordering.API/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ConnectionStrings__orderingdb: Host=postgres;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespass};Database=orderingdb
+      Identity__Url: http://identity-api:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity-api:
+        condition: service_started
+    ports:
+      - "${ORDERING_API_PORT:-5105}:8080"
+
+  order-processor:
+    image: ${REGISTRY:-eshop}/order-processor:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/OrderProcessor/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ConnectionStrings__orderingdb: Host=postgres;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespass};Database=orderingdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ordering-api:
+        condition: service_started
+    ports:
+      - "${ORDER_PROCESSOR_PORT:-5106}:8080"
+
+  payment-processor:
+    image: ${REGISTRY:-eshop}/payment-processor:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/PaymentProcessor/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${PAYMENT_PROCESSOR_PORT:-5107}:8080"
+
+  webhooks-api:
+    image: ${REGISTRY:-eshop}/webhooks-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Webhooks.API/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ConnectionStrings__webhooksdb: Host=postgres;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespass};Database=webhooksdb
+      Identity__Url: http://identity-api:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity-api:
+        condition: service_started
+    ports:
+      - "${WEBHOOKS_API_PORT:-5108}:8080"
+
+  webhooksclient:
+    image: ${REGISTRY:-eshop}/webhooksclient:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/WebhookClient/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      WEBHOOKS_API_HTTP: http://webhooks-api:8080
+      services__webhooks-api__http__0: http://webhooks-api:8080
+      IdentityUrl: ${IDENTITY_URL:-http://identity-api:8080}
+      CallBackUrl: ${WEBHOOKSCLIENT_EXTERNAL_URL:-http://localhost:5109}
+    depends_on:
+      webhooks-api:
+        condition: service_started
+      identity-api:
+        condition: service_started
+    ports:
+      - "${WEBHOOKSCLIENT_PORT:-5109}:8080"
+
+  webapp:
+    image: ${REGISTRY:-eshop}/webapp:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/WebApp/Dockerfile
+    environment:
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      BASKET_API_HTTP: http://basket-api:8080
+      services__basket-api__http__0: http://basket-api:8080
+      CATALOG_API_HTTP: http://catalog-api:8080
+      services__catalog-api__http__0: http://catalog-api:8080
+      ORDERING_API_HTTP: http://ordering-api:8080
+      services__ordering-api__http__0: http://ordering-api:8080
+      IdentityUrl: ${IDENTITY_URL:-http://identity-api:8080}
+      CallBackUrl: ${WEBAPP_EXTERNAL_URL:-http://localhost:5100}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      basket-api:
+        condition: service_started
+      catalog-api:
+        condition: service_started
+      ordering-api:
+        condition: service_started
+      identity-api:
+        condition: service_started
+    ports:
+      - "${WEBAPP_PORT:-5100}:8080"
+
+  inference:
+    image: ${REGISTRY:-eshop}/inference:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Inference/Dockerfile
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+    ports:
+      - "${INFERENCE_PORT:-5200}:8080"

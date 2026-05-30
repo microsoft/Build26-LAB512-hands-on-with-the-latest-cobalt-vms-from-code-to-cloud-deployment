@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ordering-api
+  labels:
+    app.kubernetes.io/name: ordering-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ordering-api
+      app.kubernetes.io/part-of: eshop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ordering-api
+        app.kubernetes.io/part-of: eshop
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z postgres 5432; do sleep 2; done']
+        - name: wait-for-rabbitmq
+          image: eshop/busybox:1.37
+          command: ['sh', '-c', 'until nc -z rabbitmq 5672; do sleep 2; done']
+      containers:
+        - name: ordering-api
+          image: eshop/ordering-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+              value: "true"
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: ConnectionStrings__eventbus
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: ConnectionStrings__orderingdb
+              value: Host=postgres;Port=5432;Username=postgres;Password=postgrespass;Database=orderingdb
+            - name: Identity__Url
+              value: http://identity-api
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ordering-api
+  labels:
+    app.kubernetes.io/name: ordering-api
+    app.kubernetes.io/part-of: eshop
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: ordering-api
+    app.kubernetes.io/part-of: eshop
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

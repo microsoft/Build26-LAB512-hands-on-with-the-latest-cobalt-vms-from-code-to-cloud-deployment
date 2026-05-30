@@ -1,0 +1,52 @@
+﻿@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject IConfiguration Configuration
+@implements IDisposable
+
+@if (_inferenceConfigured)
+{
+    <a class="show-chatbot @(_modelsReady ? "models-ready" : "")" href="@Nav.GetUriWithQueryParameter("chat", true)" title="@(_modelsReady ? "Chat with AI assistant" : "AI models loading...")"></a>
+
+    @if (ShowChat)
+    {
+        <Chatbot />
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "chat")]
+    public bool ShowChat { get; set; }
+
+    private bool _inferenceConfigured;
+    private bool _modelsReady;
+    private Timer? _pollTimer;
+
+    protected override void OnInitialized()
+    {
+        var inferenceUrl = Configuration["InferenceUrl"];
+        _inferenceConfigured = !string.IsNullOrEmpty(inferenceUrl);
+        if (_inferenceConfigured)
+        {
+            _pollTimer = new Timer(async _ => await CheckHealth(inferenceUrl!), null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+        }
+    }
+
+    private async Task CheckHealth(string inferenceUrl)
+    {
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var response = await http.GetStringAsync($"{inferenceUrl.TrimEnd('/')}/health");
+            if (response.Contains("healthy") && !_modelsReady)
+            {
+                _modelsReady = true;
+                _pollTimer?.Dispose();
+                _pollTimer = null;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch { /* inference not ready yet */ }
+    }
+
+    public void Dispose() => _pollTimer?.Dispose();
+}
