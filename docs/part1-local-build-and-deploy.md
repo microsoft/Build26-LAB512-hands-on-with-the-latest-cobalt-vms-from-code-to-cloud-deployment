@@ -216,10 +216,11 @@ Re-run the verification in Step 7 to confirm all 15 images are now present.
 kubectl apply -k deploy\k8s\overlays\local
 
 :: Wait for all Deployments to report Available
-kubectl -n eshop wait --for=condition=available deployment --all --timeout=300s
+:: Wait for all core Deployments to report Available (skip inference, which stays at 0 replicas locally)
+kubectl -n eshop wait --for=condition=available deployment -l app.kubernetes.io/name!=inference --timeout=300s
 
-:: Wait for all Pods to be Ready
-kubectl -n eshop wait --for=condition=ready pod --all --timeout=300s
+:: Wait for all core Pods to be Ready
+kubectl -n eshop wait --for=condition=ready pod -l app.kubernetes.io/name!=inference --timeout=300s
 ```
 
 > **Windows Firewall prompt:** You may see a dialog asking whether to allow network access. Select **Allow**.
