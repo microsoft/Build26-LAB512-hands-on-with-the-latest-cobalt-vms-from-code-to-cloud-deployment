@@ -103,3 +103,22 @@ patches:
   target:
     kind: Deployment
     name: identity-api
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "2000m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: 1Gi
+    - op: replace
+      path: /spec/template/spec/containers/0/readinessProbe
+      value:
+        tcpSocket:
+          port: 5672
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 6
+  target:
+    kind: Deployment
+    name: rabbitmq

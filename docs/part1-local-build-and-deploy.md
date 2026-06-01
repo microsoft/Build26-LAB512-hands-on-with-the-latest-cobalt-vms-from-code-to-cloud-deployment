@@ -24,7 +24,7 @@ This lab uses [**.NET eShop**](https://github.com/dotnet/eshop) - the official .
 - **Basket API** - shopping cart, backed by Redis.
 - **Ordering API + Order Processor + Payment Processor** - order pipeline, backed by Postgres and RabbitMQ.
 - **Webhooks API + Webhooks Client** - outbound notifications.
-- **Inference** - local ONNX-based chat model serving the WebApp's built-in chatbot (wired up in [Part 3](part3-ai-inference-on-cobalt.md)).
+- **Inference** - ONNX-based chat model serving the WebApp's built-in chatbot (activated in [Part 3](part3-ai-inference-on-cobalt.md) on Cobalt 200).
 - **Postgres, Redis, RabbitMQ** - backing services.
 
 In this lab you will build all 10 application service images from source as multi-arch container images and deploy them to Kubernetes.
@@ -185,9 +185,19 @@ kubectl create namespace eshop
 for /f %p in ('az acr credential show -n %ACR% --query "passwords[0].value" -o tsv') do kubectl create secret docker-registry acr-pull-secret --docker-server=%ACR%.azurecr.io --docker-username=%ACR% --docker-password=%p -n eshop --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-## Step 7: Pre-pull images locally
+## Step 7: Verify images are cached locally
 
-Pre-pulling caches the images locally so deployments start almost instantly:
+The lab VM ships with all eShop images pre-pulled from the shared ACR cache, and the `webapp` image you built in Step 5 is already in the local Docker cache too.
+
+```cmd
+docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | findstr eshop
+```
+
+**Verify:** You should see all 15 images (10 application services + inference + 4 infrastructure). If all are present, **skip Step 7a and jump straight to Step 8**.
+
+## Step 7a: Pull missing images — only if the cache check failed
+
+> **Skip this entire step if Step 7 showed all 15 images.** This is a recovery path for when the VM image cache is incomplete or stale. Most attendees will not need to run these commands.
 
 ```cmd
 :: Pre-pull all eShop images from your ACR
@@ -197,7 +207,7 @@ for %s in (identity-api catalog-api webapp basket-api ordering-api order-process
 for %s in (redis:8.6 rabbitmq:4.2 pgvector:pg17 busybox:1.37) do docker pull %ACR%.azurecr.io/eshop/%s
 ```
 
-**Verify:** Run `docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | findstr eshop`. You should see all 15 images (10 application services + inference + 4 infrastructure).
+Re-run the verification in Step 7 to confirm all 15 images are now present.
 
 ## Step 8: Deploy the application
 
@@ -210,9 +220,6 @@ kubectl -n eshop wait --for=condition=available deployment --all --timeout=300s
 
 :: Wait for all Pods to be Ready
 kubectl -n eshop wait --for=condition=ready pod --all --timeout=300s
-
-:: Start the inference service (deployed with 0 replicas initially to let core services start first)
-kubectl scale deployment inference -n eshop --replicas=1
 ```
 
 > **Windows Firewall prompt:** You may see a dialog asking whether to allow network access. Select **Allow**.

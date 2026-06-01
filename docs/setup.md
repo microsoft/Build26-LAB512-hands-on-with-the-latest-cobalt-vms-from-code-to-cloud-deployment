@@ -85,10 +85,10 @@ Wait until the Docker Desktop tray icon stops animating and the settings file ex
 type "%APPDATA%\Docker\settings-store.json"
 ```
 
-If the file doesn't exist yet or is nearly empty, wait another 30 seconds and retry. Once you see a full JSON with multiple properties, update the settings to enable Kubernetes, the containerd image store (required for multi-arch builds), and auto-start on login:
+If the file doesn't exist yet or is nearly empty, wait another 30 seconds and retry. Once you see a full JSON with multiple properties, update the settings to enable Kubernetes, pin the cluster provisioner to **Kubeadm** (the lab is built for the classic kubelet-on-host engine, not the newer kind-based engine), enable the containerd image store (required for multi-arch builds), and auto-start on login:
 
 ```cmd
-pwsh -Command "$f=\"$env:APPDATA\Docker\settings-store.json\"; $j=Get-Content $f | ConvertFrom-Json; $j | Add-Member -Force KubernetesEnabled $true; $j | Add-Member -Force UseContainerdSnapshotter $true; $j | Add-Member -Force AutoStart $true; $j | ConvertTo-Json -Depth 10 | Set-Content $f"
+pwsh -Command "$f=\"$env:APPDATA\Docker\settings-store.json\"; $j=Get-Content $f | ConvertFrom-Json; $j | Add-Member -Force KubernetesEnabled $true; $j | Add-Member -Force KubernetesMode 'kubeadm'; $j | Add-Member -Force UseContainerdSnapshotter $true; $j | Add-Member -Force AutoStart $true; $j | ConvertTo-Json -Depth 10 | Set-Content $f"
 ```
 
 Restart Docker Desktop to apply the new settings:

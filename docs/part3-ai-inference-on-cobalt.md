@@ -2,13 +2,13 @@
 
 **Time:** ~15 minutes
 
-In this part you will activate the eShop chatbot, powered by a 3.8B parameter language model running locally on CPU inside Kubernetes - first on your local x64 machine, then on Cobalt 200 Arm64 nodes. No GPU, no cloud-hosted endpoints, no API keys.
+In this part you will activate the eShop chatbot, powered by a 3.8B parameter language model running on Cobalt 200 Arm64 nodes inside Kubernetes. No GPU, no cloud-hosted endpoints, no API keys.
 
 > **Prerequisite:** Complete [Part 2 - AKS on Cobalt 200](part2-aks-on-cobalt.md) before starting this part.
 
 ## What you're about to light up
 
-The eShop storefront ships with a customer-service chatbot. So far it has been hidden because no AI backend is wired up. In this section you serve the chatbot from **Phi-4-mini-instruct** - a 3.8B parameter model published by Microsoft under the MIT License - running locally on your cluster.
+The eShop storefront ships with a customer-service chatbot. So far it has been hidden because no AI backend is wired up. In this section you serve the chatbot from **Phi-4-mini-instruct** - a 3.8B parameter model published by Microsoft under the MIT License - running on Cobalt 200 inside your AKS cluster.
 
 The inference stack:
 
@@ -37,56 +37,9 @@ The inference pod is already part of the base deployment. You do not deploy a se
 
 When those values are present, webapp registers a chat client and catalog-api registers an embedding generator for semantic product search. Without them, the chat icon stays hidden.
 
-## Step 1: Activate inference on local Docker Desktop
+## Step 1: Light up AI on Cobalt 200
 
-The inference pod is already deployed and running. But webapp and catalog-api don't know to use it yet. Inject the two environment variables that flip the switch:
-
-```cmd
-:: Switch back to the local Docker Desktop context
-kubectl config use-context docker-desktop
-
-:: Activate inference for webapp and catalog-api
-kubectl set env deployment/webapp deployment/catalog-api -n eshop OnnxEnabled=true InferenceUrl=http://inference:5200
-
-:: Wait for rolling restarts to complete
-kubectl -n eshop rollout status deployment/webapp --timeout=300s
-kubectl -n eshop rollout status deployment/catalog-api --timeout=300s
-kubectl -n eshop rollout status deployment/inference --timeout=300s
-```
-
-## Step 2: Test inference locally
-
-First, confirm the inference service is working by hitting it directly - it's exposed as a LoadBalancer on port 5200:
-
-```cmd
-curl -sS -X POST http://localhost:5200/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\":\"Phi-4-mini-instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one short sentence.\"}],\"stream\":false}"
-```
-
-You should get an OpenAI-shaped JSON response with a greeting from the locally-running model. No API key, no cloud LLM - Phi-4-mini generated those bytes on your local CPU. The first call may take 3-5 seconds while the model warms; subsequent calls are sub-second.
-
-Now test the full chat experience. Open **http://localhost:8080** - you should see a new **chat icon** in the lower-right corner. This icon was hidden until you wired up the inference service.
-
-- The icon starts grayscale while the models warm up
-- Once loaded, it turns **blue with a pulsing glow**
-- Click the icon, then type **"show me watches"** - you should see product cards with images, names, and prices
-
-> **First response may be slow.** The first request after enablement may take longer because the model is loading into memory (cold start). Subsequent requests are quicker once warmed up.
-
-### How a chat search flows through the app
-
-When you typed "show me watches", here's what happened:
-
-1. **Webapp -> Inference (Phi-4-mini):** The chat UI sends the message to inference. Phi-4-mini interprets the intent and calls the `SearchCatalog` tool with extracted search terms.
-2. **Webapp -> Catalog API:** The webapp calls the catalog search endpoint with the extracted terms.
-3. **Catalog API -> Inference (all-MiniLM-L6-v2):** The catalog API sends the search terms to inference's embeddings endpoint, which returns a vector representation.
-4. **Catalog API -> PostgreSQL (pgvector):** A vector similarity search finds matching products from pre-computed embeddings.
-5. **Results flow back:** Matching products return through Catalog API -> Webapp -> Browser, rendered as product cards you can add to your cart.
-
-Both AI models (chat and embeddings) run **locally on CPU** inside the inference container.
-
-## Step 3: Light up AI on Cobalt 200
-
-Now for the payoff. The same app, same containers, same model, same ONNX Runtime - now executing natively on Arm64 Neoverse cores:
+The same app, same containers, same model, same ONNX Runtime - now executing natively on Arm64 Neoverse cores:
 
 ```cmd
 :: Switch kubectl to the AKS cluster
@@ -101,7 +54,24 @@ kubectl -n eshop rollout status deployment/catalog-api --timeout=300s
 kubectl -n eshop rollout status deployment/inference --timeout=300s
 ```
 
-## Step 4: Test the chat on Cobalt 200
+## Step 2: Test the inference endpoint directly
+
+Before testing the chat in the browser, confirm the inference service is responding by hitting its OpenAI-compatible HTTP endpoint directly. Inference isn't exposed publicly on AKS - it's a ClusterIP service - so use `kubectl port-forward` to reach it from your VM.
+
+```cmd
+:: In a new terminal, start a port-forward (keep this window open)
+kubectl -n eshop port-forward svc/inference 5200:5200
+```
+
+Then in your main terminal:
+
+```cmd
+curl -sS -X POST http://localhost:5200/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\":\"Phi-4-mini-instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one short sentence.\"}],\"stream\":false}"
+```
+
+You should get an OpenAI-shaped JSON response with a greeting generated on Cobalt 200 Arm cores. No API key, no cloud LLM, no token meter - and the exact same container image you'd run on a dev laptop, a CI runner, or any other Kubernetes cluster. Stop the port-forward (Ctrl+C) when done.
+
+## Step 3: Test the chat on Cobalt 200
 
 Open **http://%LAB512_DNS_LABEL%.westus3.cloudapp.azure.com/** and sign in first (`alice@alice.com`, leave password blank) - you'll need an authenticated session for the "add to cart" test below.
 
@@ -182,7 +152,7 @@ Congratulations - you built a real-world .NET 10 microservices app as multi-arch
 1. **Multi-arch images reduce friction.** Kubernetes picks the correct architecture variant for the node.
 2. **Cobalt 200 does not require a special app fork.** The same app and deployment model work on Arm64.
 3. **Kustomize overlays keep environment differences small and explicit.**
-4. **Local AI inference is practical.** You can run a useful model inside the cluster without calling an external AI service.
+4. **On-CPU AI inference is practical.** You can serve a useful model inside the cluster on Cobalt 200 CPUs without calling an external AI service.
 
 ## Clean up
 

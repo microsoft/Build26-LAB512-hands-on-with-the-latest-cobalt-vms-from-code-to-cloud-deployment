@@ -36,6 +36,7 @@ kubectl -n eshop get pods -o custom-columns=NAME:.metadata.name,IMAGE:.spec.cont
 | `docker buildx inspect default` shows only `linux/amd64` | Classic image store is in use instead of containerd | Verify `UseContainerdSnapshotter` is `true` in `%APPDATA%\Docker\settings-store.json`, then `docker desktop restart` |
 | `kubectl config use-context docker-desktop` reports the context doesn't exist | Kubernetes not enabled in Docker Desktop | Re-check `KubernetesEnabled` is `true` in `settings-store.json`, then `docker desktop restart` and wait 1-3 minutes |
 | `kubectl get nodes` says `The connection to the server ... was refused` | Kubernetes control plane still starting | Wait until the Docker Desktop tray icon's Kubernetes indicator turns green |
+| `kubectl get nodes` shows node `desktop-control-plane` instead of `docker-desktop`, and pods take 5+ minutes to start with every image re-pulling from the registry | Docker Desktop is using the newer **kind**-based Kubernetes engine, which runs kubelet inside an isolated container with its own image store — pre-pulled host images are invisible to it | Switch back to the classic engine: set `KubernetesMode` to `"kubeadm"` in `%APPDATA%\Docker\settings-store.json`, then `docker desktop restart`. Or toggle via **Settings → Kubernetes → Choose cluster provisioning method → Kubeadm** |
 
 ## Azure CLI and ACR
 
@@ -115,7 +116,7 @@ kubectl -n eshop exec <pod-name> -- curl -s -o /dev/null -w "%%{http_code}" http
 
 | Symptom | Likely cause | Fix |
 |:--------|:-------------|:----|
-| `inference` pod is 0/1, `/health` returns 503 | Phi-4 ONNX model is loading into memory (3-5 min on AKS, 10-20+ min on Docker Desktop) | **Wait at least 10 minutes.** Monitor with `kubectl -n eshop logs deploy/inference --tail=10 -f` and look for `"All models ready"`. If no progress after 15 minutes, delete the pod and let it restart |
+| `inference` pod is 0/1, `/health` returns 503, `/alive` returns 200 | The Phi-4 ONNX model is loading and the canonical-prefix warmup chat is running. On AKS Cobalt 200 this takes 3-5 minutes; on Docker Desktop (x86 CPU-only) the canonical warmup decode can take **13-20 minutes** because token generation runs at ~1 tok/s on CPU. (The local overlay defaults `inference` to 0 replicas — only scale up locally if you're explicitly testing CPU inference.) | Confirm warmup is progressing, not hung. Tail the log filtered to key stages: `kubectl -n eshop logs -f deploy/inference \| findstr /i "warm model ready prefill"`. Expected sequence (minutes between lines on Docker Desktop): `Warming up models...` → `Chat model loaded from /models/phi-4-mini` → `Chat prefill: <ms>ms` → `Chat model warm in <ms>ms` → `Embedding model warm in <ms>ms` → `All models ready`. Confirm the process is burning CPU: `docker stats --no-stream \| findstr inference` should show 300-600% CPU. Once `All models ready` appears, the next readiness probe (10s) flips `/health` to 200. If CPU is <50% AND no new log lines for 5+ minutes, the warmup hung — delete the pod (`kubectl -n eshop delete pod -l app.kubernetes.io/name=inference`) and let it restart |
 | Other service pods are 0/1 | A dependency (Postgres, Redis, RabbitMQ) may not be ready yet | Check that infrastructure pods are 1/1 first, then restart the affected deployment |
 | `TimeoutRejectedException` on `BasketService.GetBasketAsync` | basket-api started before Redis was fully ready | Restart basket-api: `kubectl -n eshop rollout restart deployment basket-api` |
 
@@ -152,7 +153,7 @@ kubectl -n eshop exec <pod-name> -- curl -s -o /dev/null -w "%%{http_code}" http
 |:--------|:-------------|:----|
 | Chat icon never appears in the storefront | `OnnxEnabled`/`InferenceUrl` env vars not set on both `webapp` AND `catalog-api` | Re-run `kubectl set env deployment/webapp deployment/catalog-api -n eshop OnnxEnabled=true InferenceUrl=http://inference:5200` |
 | Chat icon stays gray (never turns blue) | Inference pod still warming up (model load + prefix-cache warmup ~30-60s after start) | `kubectl -n eshop logs deploy/inference --tail=20` and look for warmup-complete messages |
-| First chat query is slow (~3 seconds) but subsequent ones are fast | Prefix cache hadn't been populated yet | Expected - see "First response may be slow" in [Part 3](part3-ai-inference-on-cobalt.md) |
+| First chat query is slow (~3 seconds) but subsequent ones are fast | Prefix cache hadn't been populated yet | Expected - cold start tax on the first turn, then the prefix cache makes follow-ups near-instant. See [Part 3](part3-ai-inference-on-cobalt.md) |
 | Every chat query is slow (~3 seconds) | Prefix cache disabled | `kubectl -n eshop set env deploy/inference INFERENCE_PREFIX_CACHE-` (trailing dash unsets the var, restoring default) |
 | Inference noticeably slower on local Docker Desktop than on AKS | Expected - Docker Desktop runs as amd64 WSL2 without KleidiAI's Arm64 int4 kernels | Use AKS for the headline "fast inference" demo; local is for the dev/iteration loop |
 | `curl http://localhost:5200/...` hangs | Model still loading (cold start) | Wait 30-60s after pod becomes Ready, then retry |
