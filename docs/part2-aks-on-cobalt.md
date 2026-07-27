@@ -78,7 +78,7 @@ kubectl get nodes -o custom-columns=NAME:.metadata.name,STATUS:.status.condition
 
 You should see two nodes with STATUS **Ready**, ARCH **arm64**, and VM-SIZE **Standard_D8pds_v7**.
 
-## Step 2: Point the AKS overlay to your ACR
+## Step 3: Point the AKS overlay to your ACR
 
 Just like the local overlay, the AKS overlay needs its image references rewritten to point at your personal ACR:
 
@@ -93,7 +93,7 @@ kustomize edit set image eshop/redis:8.6=%ACR%.azurecr.io/eshop/redis:8.6 eshop/
 cd /d C:\lab512
 ```
 
-## Step 3: Deploy to AKS
+## Step 4: Deploy to AKS
 
 AKS pulls images directly from the attached ACR using its managed identity - no pull secret needed (unlike the Docker Desktop cluster).
 
@@ -133,7 +133,7 @@ You should see:
 - The node VM size is **`Standard_D8pds_v7`** (Cobalt 200)
 - Both services have external IPs (if either shows `<pending>`, wait a moment and re-run)
 
-## Step 4: Test the app on Cobalt 200
+## Step 5: Test the app on Cobalt 200
 
 Open your browser:
 

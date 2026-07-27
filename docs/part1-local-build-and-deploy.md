@@ -189,13 +189,13 @@ for /f %p in ('az acr credential show -n %ACR% --query "passwords[0].value" -o t
 
 ## Step 7: Verify images are cached locally
 
-The lab VM ships with all eShop images pre-pulled from the shared ACR cache, and the `webapp` image you built in Step 5 is already in the local Docker cache too.
+The lab VM ships with all eShop images pre-pulled from the shared ACR cache, and the `webapp` image you built in Step 4 is already in the local Docker cache too.
 
 ```cmd
 docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | findstr eshop
 ```
 
-**Verify:** You should see all 15 images (10 application services + inference + 4 infrastructure). If all are present, **skip Step 7a and jump straight to Step 8**.
+**Verify:** You should see all 15 images (10 application services including `inference`, plus `inference-models`, plus 4 infrastructure). If all are present, **skip Step 7a and jump straight to Step 8**.
 
 ## Step 7a: Pull missing images — only if the cache check failed
 
@@ -225,8 +225,6 @@ kubectl -n eshop wait --for=condition=ready pod -l app.kubernetes.io/name!=infer
 ```
 
 > **Windows Firewall prompt:** You may see a dialog asking whether to allow network access. Select **Allow**.
-
-The inference image is ~3.4 GB and may take a few minutes to pull. The core eShop services are usable while it downloads.
 
 **Verify:** Run `kubectl -n eshop get pods`. All pods should show **Running** status.
 
