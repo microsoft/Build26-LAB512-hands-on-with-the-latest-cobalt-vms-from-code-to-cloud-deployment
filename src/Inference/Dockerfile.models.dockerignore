@@ -1,0 +1,14 @@
+# Build-context ignore rules for Dockerfile.models only.
+# BuildKit uses <dockerfile-path>.dockerignore in preference to the root
+# .dockerignore. This file is a copy of the root .dockerignore WITHOUT the
+# models/ entry, because packaging models/ is the entire purpose of this build.
+**/bin/
+**/obj/
+.git/
+*.user
+*.suo
+.vs/
+tests/
+src/ClientApp/
+src/HybridApp/
+src/eShop.AppHost/

@@ -121,10 +121,12 @@ Then build and push the inference images. The `inference-models` image must be b
 ```cmd
 docker buildx build --platform linux/amd64,linux/arm64 -t %ACR%.azurecr.io/eshop/inference-models:latest -f src\Inference\Dockerfile.models . --push
 
-docker buildx build --platform linux/amd64,linux/arm64 -t %ACR%.azurecr.io/eshop/inference:latest -f src\Inference\Dockerfile . --push
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg MODELS_IMAGE=%ACR%.azurecr.io/eshop/inference-models:latest -t %ACR%.azurecr.io/eshop/inference:latest -f src\Inference\Dockerfile . --push
 ```
 
 > The inference images are large (~5 GB) because the ONNX model files are baked in. This build step will take longer than the others.
+
+> **What `--build-arg MODELS_IMAGE` does:** the inference Dockerfile pulls the model files out of the `inference-models` image rather than hardcoding a registry. This argument tells it to use the one you just pushed to your own ACR.
 
 ### Import infrastructure images from Docker Hub
 
