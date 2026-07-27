@@ -125,7 +125,7 @@ docker buildx build --platform linux/amd64,linux/arm64 --build-arg MODELS_IMAGE=
 ```
 
 > The inference images are large (~5 GB) because the ONNX model files are baked in. This build step will take longer than the others.
-
+>
 > **What `--build-arg MODELS_IMAGE` does:** the inference Dockerfile pulls the model files out of the `inference-models` image rather than hardcoding a registry. This argument tells it to use the one you just pushed to your own ACR.
 
 ### Import infrastructure images from Docker Hub
