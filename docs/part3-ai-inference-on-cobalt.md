@@ -56,7 +56,7 @@ kubectl -n eshop rollout status deployment/inference --timeout=300s
 
 ## Step 2: Test the inference endpoint directly
 
-Before testing the chat in the browser, confirm the inference service is responding by hitting its OpenAI-compatible HTTP endpoint directly. Inference isn't exposed publicly on AKS - it's a ClusterIP service - so use `kubectl port-forward` to reach it from your VM.
+Before testing the chat in the browser, confirm the inference service is responding by hitting its OpenAI-compatible HTTP endpoint directly. The storefront reaches inference over the cluster-internal address `http://inference:5200`, so nothing outside the cluster needs to call it. To try it yourself from the VM, forward the port with `kubectl port-forward`.
 
 ```cmd
 :: In a new terminal, start a port-forward (keep this window open)
