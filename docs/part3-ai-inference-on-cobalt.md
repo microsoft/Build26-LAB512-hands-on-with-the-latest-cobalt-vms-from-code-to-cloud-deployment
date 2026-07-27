@@ -54,24 +54,7 @@ kubectl -n eshop rollout status deployment/catalog-api --timeout=300s
 kubectl -n eshop rollout status deployment/inference --timeout=300s
 ```
 
-## Step 2: Test the inference endpoint directly
-
-Before testing the chat in the browser, confirm the inference service is responding by hitting its OpenAI-compatible HTTP endpoint directly. The storefront reaches inference over the cluster-internal address `http://inference:5200`, so nothing outside the cluster needs to call it. To try it yourself from the VM, forward the port with `kubectl port-forward`.
-
-```cmd
-:: In a new terminal, start a port-forward (keep this window open)
-kubectl -n eshop port-forward svc/inference 5200:5200
-```
-
-Then in your main terminal:
-
-```cmd
-curl -sS -X POST http://localhost:5200/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\":\"Phi-4-mini-instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one short sentence.\"}],\"stream\":false}"
-```
-
-You should get an OpenAI-shaped JSON response with a greeting generated on Cobalt 200 Arm cores. No API key, no cloud LLM, no token meter - and the exact same container image you'd run on a dev laptop, a CI runner, or any other Kubernetes cluster. Stop the port-forward (Ctrl+C) when done.
-
-## Step 3: Test the chat on Cobalt 200
+## Step 2: Test the chat on Cobalt 200
 
 Open **http://%LAB512_DNS_LABEL%.westus3.cloudapp.azure.com/** and sign in first (`alice@alice.com`, leave password blank) - you'll need an authenticated session for the "add to cart" test below.
 
@@ -92,7 +75,7 @@ Notice the response landed in well under a second - a 3.8B-parameter model, runn
 
 The fifth lever - the prefix cache - kicks in on the *next* turn.
 
-## Step 5: Multi-turn conversation
+## Step 3: Multi-turn conversation
 
 With the chat still open after the "show me watches" response, type:
 
