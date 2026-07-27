@@ -217,7 +217,6 @@ Re-run the verification in Step 7 to confirm all 15 images are now present.
 :: Apply the local overlay - Kustomize merges base + local patches into a single manifest stream
 kubectl apply -k deploy\k8s\overlays\local
 
-:: Wait for all Deployments to report Available
 :: Wait for all core Deployments to report Available (skip inference, which stays at 0 replicas locally)
 kubectl -n eshop wait --for=condition=available deployment -l app.kubernetes.io/name!=inference --timeout=300s
 

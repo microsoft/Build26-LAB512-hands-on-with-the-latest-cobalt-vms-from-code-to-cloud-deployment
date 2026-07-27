@@ -158,7 +158,7 @@ kubectl -n eshop exec <pod-name> -- curl -s -o /dev/null -w "%%{http_code}" http
 | Every chat query is slow (~3 seconds) | Prefix cache disabled | `kubectl -n eshop set env deploy/inference INFERENCE_PREFIX_CACHE-` (trailing dash unsets the var, restoring default) |
 | Inference noticeably slower on local Docker Desktop than on AKS | Expected - Docker Desktop runs as amd64 WSL2 without KleidiAI's Arm64 int4 kernels | Use AKS for the headline "fast inference" demo; local is for the dev/iteration loop |
 | `curl http://localhost:5200/...` hangs | Model still loading (cold start) | Wait 30-60s after pod becomes Ready, then retry |
-| `curl http://localhost:5200/...` connection refused | Inference service not exposed or pod not Ready | `kubectl -n eshop get svc inference` and `kubectl -n eshop get pods -l app.kubernetes.io/name=inference` |
+| `curl http://localhost:5200/...` connection refused | Port-forward not running, or pod not Ready | Confirm `kubectl -n eshop port-forward svc/inference 5200:5200` is still running in its own window, then `kubectl -n eshop get pods -l app.kubernetes.io/name=inference` |
 
 ---
 
