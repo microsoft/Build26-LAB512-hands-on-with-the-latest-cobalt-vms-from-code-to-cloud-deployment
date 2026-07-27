@@ -8,6 +8,7 @@ tests/
 src/ClientApp/
 src/HybridApp/
 src/eShop.AppHost/
-# ~5 GB of ONNX model files. Only Dockerfile.models needs these, and it has its
-# own Dockerfile.models.dockerignore that re-includes them.
+# ~5 GB of ONNX model files. Only the models image needs them, and that build
+# uses Dockerfile.models.dockerignore instead of this file, which has no
+# models/ entry.
 models/
