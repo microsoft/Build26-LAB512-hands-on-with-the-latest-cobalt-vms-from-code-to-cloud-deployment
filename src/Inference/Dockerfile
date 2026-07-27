@@ -1,4 +1,7 @@
 ARG TARGETARCH
+# Registry holding the pre-built models image (built first with Dockerfile.models).
+# Required - pass --build-arg MODELS_IMAGE=<registry>/eshop/inference-models:<tag>
+ARG MODELS_IMAGE
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG TARGETARCH
 WORKDIR /src
@@ -29,7 +32,7 @@ COPY src/Inference/native/linux-arm64/libonnxruntime-genai.so /native/
 FROM native-${TARGETARCH} AS native
 
 # Pre-built models image from ACR (built once with Dockerfile.models)
-FROM lab512acrcache.azurecr.io/eshop/inference-models:latest AS models
+FROM ${MODELS_IMAGE} AS models
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

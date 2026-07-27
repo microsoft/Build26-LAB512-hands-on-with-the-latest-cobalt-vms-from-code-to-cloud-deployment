@@ -225,11 +225,25 @@ services:
     ports:
       - "${WEBAPP_PORT:-5100}:8080"
 
+  # Build-only image that packages the ONNX model files. It has no entrypoint to
+  # run, so it sits behind a profile and is skipped by `docker compose up`.
+  # It must be built before `inference`, which copies the models out of it:
+  #   docker compose --profile build build inference-models
+  #   docker compose build inference
+  inference-models:
+    image: ${REGISTRY:-eshop}/inference-models:${TAG:-latest}
+    profiles: ["build"]
+    build:
+      context: .
+      dockerfile: src/Inference/Dockerfile.models
+
   inference:
     image: ${REGISTRY:-eshop}/inference:${TAG:-latest}
     build:
       context: .
       dockerfile: src/Inference/Dockerfile
+      args:
+        MODELS_IMAGE: ${MODELS_IMAGE:-${REGISTRY:-eshop}/inference-models:${TAG:-latest}}
     environment:
       ASPNETCORE_HTTP_PORTS: "8080"
     ports:
