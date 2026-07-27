@@ -156,9 +156,6 @@ kubectl -n eshop exec <pod-name> -- curl -s -o /dev/null -w "%%{http_code}" http
 | Chat icon stays gray (never turns blue) | Inference pod still warming up (model load + prefix-cache warmup ~30-60s after start) | `kubectl -n eshop logs deploy/inference --tail=20` and look for warmup-complete messages |
 | First chat query is slow (~3 seconds) but subsequent ones are fast | Prefix cache hadn't been populated yet | Expected - cold start tax on the first turn, then the prefix cache makes follow-ups near-instant. See [Part 3](part3-ai-inference-on-cobalt.md) |
 | Every chat query is slow (~3 seconds) | Prefix cache disabled | `kubectl -n eshop set env deploy/inference INFERENCE_PREFIX_CACHE-` (trailing dash unsets the var, restoring default) |
-| Inference noticeably slower on local Docker Desktop than on AKS | Expected - Docker Desktop runs as amd64 WSL2 without KleidiAI's Arm64 int4 kernels | Use AKS for the headline "fast inference" demo; local is for the dev/iteration loop |
-| `curl http://localhost:5200/...` hangs | Model still loading (cold start) | Wait 30-60s after pod becomes Ready, then retry |
-| `curl http://localhost:5200/...` connection refused | Port-forward not running, or pod not Ready | Confirm `kubectl -n eshop port-forward svc/inference 5200:5200` is still running in its own window, then `kubectl -n eshop get pods -l app.kubernetes.io/name=inference` |
 
 ---
 
