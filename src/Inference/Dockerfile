@@ -1,3 +1,4 @@
+# check=skip=InvalidDefaultArgInFrom
 ARG TARGETARCH
 # Registry holding the pre-built models image (built first with Dockerfile.models).
 # Required - pass --build-arg MODELS_IMAGE=<registry>/eshop/inference-models:<tag>
